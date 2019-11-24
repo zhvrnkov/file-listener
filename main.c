@@ -33,6 +33,7 @@ int main(int argc, char *argv[]) {
       printf("main: modified!!!\n");
       last_time_modification = time_modification;
     }
+    usleep(500000);
   }
   
 
