@@ -13,6 +13,7 @@ typedef struct stat META;
 char *concat(const char *s1, const char *s2);
 char *execute(const char *command);
 META *get_meta_data(const char *path);
+char **get_words(const char *str);
 
 int main(int argc, char *argv[]) {
   if (argc != 2) {
@@ -88,4 +89,27 @@ META *get_meta_data(const char *path) {
     return NULL;
   }
   return file_meta;
+}
+
+char **get_words(const char *str) {
+  int start = 0;
+  int output_size = 1;
+  char **output = malloc(sizeof(char *) * output_size);
+  for (int i = 0; str[i]; i++) {
+    if (str[i] == ' ' || str[i + 1] == '\0') {
+      int size = i - start + (str[i + 1] == '\0' ? 2 : 1);
+      char *word = malloc(size);
+      for (int j = 0; j < size - 1; j++)
+	word[j] = str[start + j];
+      word[size - 1] = '\0';
+      start = i + 1;
+
+      output[output_size - 1] = word;
+      output = realloc(output, ++output_size);
+    }
+  }
+
+  output[output_size - 1] = NULL;
+  
+  return output;
 }
