@@ -5,38 +5,44 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+#include <errno.h>
 
 #define die(e) do { fprintf(stderr, "%s\n", e); exit(EXIT_FAILURE); } while (0);
 
 typedef struct stat META;
 
 char *concat(const char *s1, const char *s2);
-char *execute(const char *command);
+char *execute(char *command);
+char *execute_with_args(const char *command, char *const args[]);
 META *get_meta_data(const char *path);
 char **get_words(const char *str);
 
 int main(int argc, char *argv[]) {
-  if (argc != 2) {
+  if (argc != 3) {
     printf("bad arguments");
     return 1;
   }
 
-  char *current_dir = execute("pwd");
   char *filename = argv[1];
+  char **command = get_words(argv[2]);
+
+  char *current_dir = execute("pwd");
   char *path = concat(current_dir, filename);
-  time_t last_time_modification = get_meta_data(path)->st_mtime;
+  META *data = get_meta_data(path);
+  if (!data) die("get_meta_data");
+  time_t last_time_modification = data->st_mtime;
 
   while (1) {
     META *data = get_meta_data(path);
     if (!data) continue;
     time_t time_modification = data->st_mtime;
     if (time_modification != last_time_modification) {
-      printf("main: modified!!!\n");
+      char *output = execute_with_args(command[0], command);
+      printf("%s\n", output);
       last_time_modification = time_modification;
     }
     usleep(500000);
   }
-  
 
   return 0;
 }
@@ -48,7 +54,12 @@ char *concat(const char *s1, const char *s2) {
   return output;
 }
 
-char *execute(const char *command) {
+char *execute(char *command) {
+  char *args[] = {command, NULL};
+  return execute_with_args(command, args);
+}
+
+char *execute_with_args(const char *command, char *const args[]) {
   int fds[2];
   pid_t child_pid;
   char *output;
@@ -58,12 +69,12 @@ char *execute(const char *command) {
 
   if ((child_pid = fork()) == -1)
     die("fork");
-
+  
   if (child_pid == 0) {
     // fds[1] to write
     dup2(fds[1], STDOUT_FILENO); // stdout now fds[1]
     close(fds[0]);
-    execlp(command, command, NULL);
+    execvp(command, args);
     die("execlp");
   } else {
     // fds[0] to read
@@ -79,6 +90,7 @@ char *execute(const char *command) {
     output[count - 1] = '/';
     printf("execute: %d %s\n", count, output);
   }
+  
   return output;
 }
 
